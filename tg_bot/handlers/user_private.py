@@ -1,15 +1,17 @@
 import random
 import string
+from datetime import datetime
 
 from aiogram import Router
 from aiogram.enums import ParseMode
-from aiogram.filters import Command, CommandStart, StateFilter, or_f
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, LinkPreviewOptions, ReplyKeyboardRemove
 from aiogram import F
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.botSettings.crud import get_bot_status, get_lifetime_dates
 from config import URL_RAFFLE_CONDITION, URL_RAFFLE_PERSONAL_DATA_PROCESSING
 from tg_bot.db.models import Participant
 from tg_bot.keyboard.reply_keyboard import get_reply_keyboard
@@ -30,16 +32,23 @@ class RegistrationUser(StatesGroup):
     surname = State()
     check_number = State()
     random_value = State()
+
+
 @user_private_router.message(StateFilter(None), CommandStart())
 async def go_to_start_register_raffle(message: Message, state: FSMContext, session: AsyncSession):
-    await message.answer('Перед началом регистрации вам необдходимо ответить на вопросы\n',
-                         reply_markup=get_reply_keyboard(
-                             'Готов!',
-                             'Не сейчас!',
-                             size=(1,1,)
-                         ))
-    await session.begin()
-    await state.set_state(QuestionBeforeRegister.first_Q)
+    bot_status = await get_bot_status(session=session)
+    lifetime_bot = await get_lifetime_dates(session=session)
+    if bot_status.status and lifetime_bot.time_end > datetime.now() > lifetime_bot.time_start:
+        await message.answer('Перед началом регистрации вам необдходимо ответить на вопросы\n',
+                             reply_markup=get_reply_keyboard(
+                                 'Готов!',
+                                 'Не сейчас!',
+                                 size=(1, 1,)
+                             ))
+        await session.begin()
+        await state.set_state(QuestionBeforeRegister.first_Q)
+    else:
+        await message.answer('Розыгрышей в данный момент нет')
 
 
 @user_private_router.message(Command(commands=["cancel"]))
@@ -189,7 +198,12 @@ async def sevens_step_register(message: Message, state: FSMContext, session: Asy
 
     except Exception as e:
         await session.rollback()
-        await message.answer('Произошла ошибка. Пройдите регистрацию заново')
+        await message.answer('Произошла ошибка. Пройдите регистрацию заново',
+                             reply_markup=get_reply_keyboard(
+                                 '/start',
+                                 size=(1,)
+                             ))
+        await state.clear()
         raise e
 
     finally:

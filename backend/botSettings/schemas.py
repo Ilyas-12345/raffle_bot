@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from datetime import datetime
 
 class Participant(BaseModel):
 
@@ -10,3 +10,15 @@ class Participant(BaseModel):
     phone_number: str
     check_number: str
     random_key: str
+
+
+class BotStatus(BaseModel):
+
+    status: bool
+    time_change_activity: datetime
+
+
+class SetActivityBot(BaseModel):
+
+    time_start: datetime
+    time_end: datetime
