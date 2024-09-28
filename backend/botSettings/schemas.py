@@ -1,8 +1,12 @@
 from pydantic import BaseModel
 from datetime import datetime
 
+from tg_bot.db import models
+
+
 class Participant(BaseModel):
 
+    id: int
     username: str
     name: str
     last_name: str
@@ -10,15 +14,17 @@ class Participant(BaseModel):
     phone_number: str
     check_number: str
     random_key: str
+    tg_id: int
 
 
-class BotStatus(BaseModel):
-
-    status: bool
-    time_change_activity: datetime
-
-
-class SetActivityBot(BaseModel):
+class TimeActivityBot(BaseModel):
 
     time_start: datetime
     time_end: datetime
+    amount_winner: int
+    status: str
+
+
+class Winner(BaseModel):
+
+    raffle_id: int

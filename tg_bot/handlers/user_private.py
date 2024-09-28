@@ -11,7 +11,7 @@ from aiogram.types import Message, LinkPreviewOptions, ReplyKeyboardRemove
 from aiogram import F
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.botSettings.crud import get_bot_status, get_lifetime_dates
+from backend.botSettings.crud import  get_lifetime_dates, get_current_raffle
 from config import URL_RAFFLE_CONDITION, URL_RAFFLE_PERSONAL_DATA_PROCESSING
 from tg_bot.db.models import Participant
 from tg_bot.keyboard.reply_keyboard import get_reply_keyboard
@@ -36,19 +36,13 @@ class RegistrationUser(StatesGroup):
 
 @user_private_router.message(StateFilter(None), CommandStart())
 async def go_to_start_register_raffle(message: Message, state: FSMContext, session: AsyncSession):
-    bot_status = await get_bot_status(session=session)
-    lifetime_bot = await get_lifetime_dates(session=session)
-    if bot_status.status and lifetime_bot.time_end > datetime.now() > lifetime_bot.time_start:
-        await message.answer('Перед началом регистрации вам необдходимо ответить на вопросы\n',
-                             reply_markup=get_reply_keyboard(
-                                 'Готов!',
-                                 'Не сейчас!',
-                                 size=(1, 1,)
-                             ))
-        await session.begin()
-        await state.set_state(QuestionBeforeRegister.first_Q)
-    else:
-        await message.answer('Розыгрышей в данный момент нет')
+    await message.answer('Перед началом регистрации вам необдходимо ответить на вопросы\n',
+                         reply_markup=get_reply_keyboard(
+                             'Готов!',
+                            'Не сейчас!',
+                             size=(1, 1,)
+                         ))
+    await state.set_state(QuestionBeforeRegister.first_Q)
 
 
 @user_private_router.message(Command(commands=["cancel"]))
@@ -135,6 +129,7 @@ async def first_step_register(message: Message, state: FSMContext):
                          reply_markup=get_reply_keyboard('Отправить номер телефона'))
     await state.set_state(RegistrationUser.name)
 
+
 #Переход ко 2ой FSM
 @user_private_router.message(RegistrationUser.name, F.text)
 async def second_step_register_number(message: Message, state: FSMContext):
@@ -173,8 +168,16 @@ async def sixs_step_register(message: Message, state: FSMContext):
 @user_private_router.message(RegistrationUser.random_value, F.text)
 async def sevens_step_register(message: Message, state: FSMContext, session: AsyncSession):
     await state.update_data(check_number=message.text)
+
     alphanumeric = string.ascii_letters + string.digits
     random_value = ''.join(random.choice(alphanumeric) for _ in range(8))
+
+    current_raffle = await get_current_raffle(session=session)
+    if not current_raffle:
+        await message.answer('Текущий розыгрыш не найден. Попробуйте позже.')
+        await state.clear()
+        return
+
     data = await state.get_data()
     user_data = {
         'username': message.from_user.full_name,
@@ -183,12 +186,16 @@ async def sevens_step_register(message: Message, state: FSMContext, session: Asy
         'surname': data.get('surname'),
         'phone_number': data.get('contact'),
         'check_number': data.get('check_number'),
-        'random_key': random_value
+        'random_key': random_value,
+        'tg_id': message.from_user.id
     }
 
     try:
         new_user = Participant(**user_data)
         session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+        current_raffle.participants.append(new_user)
         await session.commit()
         await message.answer('Вы успешно зарегестрировались в розыгрыше!\n'
                              f'Ваш код участника - {random_value}\n\n'
