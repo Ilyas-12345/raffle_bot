@@ -11,7 +11,7 @@ from aiogram.types import Message, LinkPreviewOptions, ReplyKeyboardRemove
 from aiogram import F
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.botSettings.crud import  get_lifetime_dates, get_current_raffle
+from backend.botSettings.crud import get_lifetime_dates, get_current_raffle, get_question_table
 from config import URL_RAFFLE_CONDITION, URL_RAFFLE_PERSONAL_DATA_PROCESSING
 from tg_bot.db.models import Participant
 from tg_bot.keyboard.reply_keyboard import get_reply_keyboard
@@ -36,37 +36,43 @@ class RegistrationUser(StatesGroup):
 
 @user_private_router.message(StateFilter(None), CommandStart())
 async def go_to_start_register_raffle(message: Message, state: FSMContext, session: AsyncSession):
-    await message.answer('Перед началом регистрации вам необдходимо ответить на вопросы\n',
+    questions = await get_question_table(session=session)
+    await message.answer(f'{questions.q_first}\n',
                          reply_markup=get_reply_keyboard(
-                             'Готов!',
+                             'Начать!',
                             'Не сейчас!',
-                             size=(1, 1,)
+                            'Отмена',
+                             size=(2, 1)
                          ))
     await state.set_state(QuestionBeforeRegister.first_Q)
 
 
-@user_private_router.message(Command(commands=["cancel"]))
-@user_private_router.message(F.text.casefold() == 'отмена')
+@user_private_router.message(F.text.casefold().in_(["отмена", "/cancel"]))
 async def go_to_start_register_raffle(message: Message, state: FSMContext, session: AsyncSession):
     await state.clear()
     await session.rollback()
     await message.answer('Регистрация отменена',
-                         reply_markup=ReplyKeyboardRemove())
+                         reply_markup=get_reply_keyboard(
+                             'Начать!',
+                             'Не сейчас!',
+                             'Отмена',
+                             size=(2, 1)
+                         ))
 
 
-@user_private_router.message(QuestionBeforeRegister.first_Q, F.text.casefold() == 'готов!')
-async def first_step_before_register(message: Message, state: FSMContext):
-    link = URL_RAFFLE_CONDITION
-    await message.answer(f"Вы ознакомились с условиями розыгрышами?"
-                         f"Ознакомиться можно здесь -> {link}",
+
+@user_private_router.message(F.text.casefold() == 'начать!')
+async def first_step_before_register(message: Message, state: FSMContext, session: AsyncSession):
+    questions = await get_question_table(session=session)
+    await message.answer(f"{questions.q_first}\n{questions.q_second_raffle_condition_url}",
                          link_preview_options=LinkPreviewOptions(is_disabled=True),
                          reply_markup=get_reply_keyboard(
                              'Да',
                              'Нет',
-                             size=(1,1,)
+                             'Отмена',
+                             size=(2, 1)
                          ))
     await state.set_state(QuestionBeforeRegister.second_Q)
-#----Первый вопрос
 
 
 @user_private_router.message(QuestionBeforeRegister.first_Q, F.text.casefold() == 'не сейчас!')
@@ -77,39 +83,42 @@ async def first_step_before_register_not_now(message: Message, state: FSMContext
                          reply_markup=ReplyKeyboardRemove())
 
 
+#----Первый вопрос
 @user_private_router.message(QuestionBeforeRegister.first_Q)
 async def first_step_before_register_incorrect(message: Message, state: FSMContext):
     await message.answer('Я вас не понял(\n'
                          'Выберите \'Готов\' или \'Не сейчас!\'',
                          reply_markup=get_reply_keyboard(
-                             'Готов!',
+                             'Начать!',
                              'Не сейчас!',
-                             size=(1, 1,)
+                             'Отмена',
+                             size=(2, 1)
                          ))
 
+
 @user_private_router.message(QuestionBeforeRegister.second_Q, F.text.casefold() == 'да')
-async def second_step_before_register(message: Message, state: FSMContext):
-    link = URL_RAFFLE_PERSONAL_DATA_PROCESSING
-    await message.answer(f'Вы даете подтверждение на обработку персональных данных?'
-                         f'Ссылка для ознакомления -> {link}: ',
+async def second_step_before_register(message: Message, state: FSMContext, session: AsyncSession):
+    questions = await get_question_table(session=session)
+    await message.answer(f'{questions.q_third}\n{questions.q_third_url_privacy}: ',
                          reply_markup=get_reply_keyboard(
                              'Да',
                              'Нет',
-                             size=(1,1,)
+                             'Отмена',
+                             size=(2, 1)
                          ))
     await state.set_state(RegistrationUser.contact)
-#----Второй вопрос
 
+
+#----Второй вопрос
 @user_private_router.message(QuestionBeforeRegister.second_Q, F.text.casefold() == 'нет')
 async def second_step_before_register_not_now(message: Message, state: FSMContext, session: AsyncSession):
     await state.clear()
     await session.rollback()
     await message.answer('Будем ждать в следующий раз!',
-                         reply_markup=get_reply_keyboard(
+                         reply_markup=  get_reply_keyboard(
                              '/start',
                              size=(1, 1,)
                          ))
-
 
 @user_private_router.message(QuestionBeforeRegister.second_Q)
 async def second_step_before_register_incorrect(message: Message):
@@ -118,50 +127,71 @@ async def second_step_before_register_incorrect(message: Message):
                          reply_markup=get_reply_keyboard(
                              'Да',
                              'Нет',
-                             size=(1, 1,)
+                             'Отмена',
+                             size=(2, 1)
                          ))
 
+
 @user_private_router.message(RegistrationUser.contact, F.text.casefold() == 'да')
-async def first_step_register(message: Message, state: FSMContext):
-    await message.answer('Отлично!\n\n'
-                         'Давайте приступим к регистрации.\n'
-                         '1. Введите номер телефона в формате: 375 XX YYY-YY-YY или 8 0XX YYY-YY-YY',
-                         reply_markup=get_reply_keyboard('Отправить номер телефона'))
+async def first_step_register(message: Message, state: FSMContext, session: AsyncSession):
+    questions = await get_question_table(session=session)
+    await message.answer(f'{questions.q_fourth_introduce}\n{questions.q_fourth_phone_number}',
+                         reply_markup=get_reply_keyboard(
+                             'Отмена',
+                             size=(1,)))
     await state.set_state(RegistrationUser.name)
 
-
-#Переход ко 2ой FSM
 @user_private_router.message(RegistrationUser.name, F.text)
-async def second_step_register_number(message: Message, state: FSMContext):
+async def second_step_register_number(message: Message, state: FSMContext, session: AsyncSession):
     if check_phone_number(message):
+        questions = await get_question_table(session=session)
         await state.update_data(contact=message.text)
         await state.set_state(RegistrationUser.last_name)
-        await message.answer(f'Отлично! Ваш номер телефона - {message.text}')
-        await message.answer('Введите ваше имя')
+        await message.answer(f'{questions.q_fives_name}',
+                             reply_markup=get_reply_keyboard(
+                                 'Отмена',
+                                 size=(1,)
+                             ))
 
     else:
         await message.answer('Некорректный номер телефона\n'
                              'Введите номер телефона еще раз.')
 
 
+#Переход ко 2ой FSM
 @user_private_router.message(RegistrationUser.last_name, F.text)
-async def third_step_register(message: Message, state: FSMContext):
+async def third_step_register(message: Message, state: FSMContext, session: AsyncSession):
+    questions = await get_question_table(session=session)
     await state.update_data(name=message.text)
-    await message.answer('Введите вашу фамилию')
+    await message.answer(f'{questions.q_sixth_lastname}',
+                         reply_markup=get_reply_keyboard(
+                             'Отмена',
+                             size=(1, )
+                         ))
     await state.set_state(RegistrationUser.surname)
 
 
 @user_private_router.message(RegistrationUser.surname, F.text)
-async def fours_step_register(message: Message, state: FSMContext):
+async def fours_step_register(message: Message, state: FSMContext, session: AsyncSession):
+    questions = await get_question_table(session=session)
     await state.update_data(last_name=message.text)
-    await message.answer('Введите ваше отчество')
+    await message.answer(f'{questions.q_seventh_middle_name}',
+                         reply_markup=get_reply_keyboard(
+                             'Отмена',
+                             size=(1, )
+                         ))
     await state.set_state(RegistrationUser.check_number)
 
 
 @user_private_router.message(RegistrationUser.check_number, F.text)
-async def sixs_step_register(message: Message, state: FSMContext):
+async def sixs_step_register(message: Message, state: FSMContext, session: AsyncSession):
+    questions = await get_question_table(session=session)
     await state.update_data(surname=message.text)
-    await message.answer('Введите номер чека')
+    await message.answer(f'{questions.q_eighth_sales_receipt}',
+                         reply_markup=get_reply_keyboard(
+                             'Отмена',
+                             size=(1, )
+                         ))
     await state.set_state(RegistrationUser.random_value)
 
 
@@ -215,4 +245,3 @@ async def sevens_step_register(message: Message, state: FSMContext, session: Asy
 
     finally:
         await session.close()
-

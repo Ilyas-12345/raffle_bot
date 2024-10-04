@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from backend.auth.backend import auth_backend
 from backend.auth.schemas import UserRead, UserCreate
 from backend.botSettings.crud import get_last_active_raffle, get_current_raffle
-from backend.botSettings.routers import router, fastapi_users
+from backend.botSettings.routers import fastapi_users, router_admin, router_all_user
 from tg_bot.cron.generate_winners import monitor_raffles
 #from tg_bot.cron.generate_winners import determine_and_notify_winners, monitor_raffles
 from tg_bot.db.engine import async_session_maker
@@ -26,7 +26,13 @@ dp = Dispatcher()
 dp.include_router(user_private_router)
 
 app = FastAPI()
-app.include_router(router)
+
+app.include_router(router_admin,
+                   prefix='/admin',
+                   tags=['modification'])
+app.include_router(router_all_user,
+                   prefix='/manager',
+                   tags=['browse'])
 app.include_router(
     fastapi_users.get_auth_router(auth_backend),
     prefix="/auth/jwt",

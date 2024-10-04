@@ -76,3 +76,32 @@ class TimeActivityBot(Base):
     )
 
 
+class QStepRegistration(Base):
+    __tablename__ = 'question'
+
+    #q - question
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    q_first: Mapped[str] = mapped_column(nullable=False)
+    q_second: Mapped[str] = mapped_column(nullable=False)
+    q_second_raffle_condition_url: Mapped[str] = mapped_column(nullable=False)
+    q_third: Mapped[str] = mapped_column(nullable=False)
+    q_third_url_privacy: Mapped[str] = mapped_column(nullable=False)
+    q_fourth_introduce: Mapped[str] = mapped_column(nullable=False)
+    q_fourth_phone_number: Mapped[str] = mapped_column(nullable=False)
+    q_fives_name: Mapped[str] = mapped_column(nullable=False)
+    q_sixth_lastname: Mapped[str] = mapped_column(nullable=False)
+    q_seventh_middle_name: Mapped[str] = mapped_column(nullable=False)
+    q_eighth_sales_receipt: Mapped[str] = mapped_column(nullable=False)
+
+
+class ARegistration(Base):
+    __tablename__ = 'answer'
+
+    #a - answer
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    a_end_registration_message: Mapped[str] = mapped_column(nullable=False)
+    a_message_for_winners: Mapped[str] = mapped_column(nullable=False)
+    a_message_for_all_users: Mapped[str] = mapped_column(nullable=False)
+
+

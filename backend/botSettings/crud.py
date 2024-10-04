@@ -7,7 +7,7 @@ from sqlalchemy import select, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from tg_bot.db.models import Participant, TimeActivityBot, participant_time_activity_bot, winner
+from tg_bot.db.models import Participant, TimeActivityBot, participant_time_activity_bot, winner, QStepRegistration
 from backend.botSettings import schemas
 
 
@@ -166,3 +166,97 @@ async def update_amount_winner(raffle_id: int, amount: id, session: AsyncSession
     else:
         await session.execute(query)
         await session.commit()
+
+
+async def create_questions_table(question: schemas.Question, session: AsyncSession):
+    query = QStepRegistration(q_first=question.q_first, q_second=question.q_second,
+                              q_second_raffle_condition_url=question.q_second_raffle_condition_url,
+                              q_third=question.q_third, q_third_url_privacy=question.q_third_url_privacy,
+                              q_fourth_introduce=question.q_fourth_introduce,
+                              q_fourth_phone_number=question.q_fourth_phone_number, q_fives_name=question.q_fives_name,
+                              q_sixth_lastname=question.q_sixth_lastname,
+                              q_seventh_middle_name=question.q_seventh_middle_name,
+                              q_eighth_sales_receipt=question.q_eighth_sales_receipt)
+    session.add(query)
+    await session.commit()
+    await session.refresh(query)
+    return query
+
+
+async def update_q_first(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_first=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_second(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_second=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_second_raffle_condition_url(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_second_raffle_condition_url=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_third(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_third=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_third_url_privacy(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_third_url_privacy=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_fourth_introduce(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_fourth_introduce=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_fourth_phone_number(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_fourth_phone_number=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_fives_name(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_fives_name=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_sixth_lastname(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_sixth_lastname=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_seventh_middle_name(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_seventh_middle_name=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_q_eighth_sales_receipt(question: str, session: AsyncSession):
+    query = update(QStepRegistration).values(q_eighth_sales_receipt=question)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_all_question(new_data: schemas.Question, session: AsyncSession):
+    query = update(QStepRegistration).values(**new_data.dict())
+    await session.execute(query)
+    await session.commit()
+
+
+async def get_question_table(session: AsyncSession):
+    query = select(QStepRegistration)
+    result = await session.execute(query)
+    return result.scalars().first()
+
