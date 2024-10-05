@@ -11,7 +11,7 @@ from aiogram.types import Message, LinkPreviewOptions, ReplyKeyboardRemove
 from aiogram import F
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.botSettings.crud import get_lifetime_dates, get_current_raffle, get_question_table
+from backend.botSettings.crud import get_lifetime_dates, get_current_raffle, get_question_table, get_answer_table
 from config import URL_RAFFLE_CONDITION, URL_RAFFLE_PERSONAL_DATA_PROCESSING
 from tg_bot.db.models import Participant
 from tg_bot.keyboard.reply_keyboard import get_reply_keyboard
@@ -51,7 +51,8 @@ async def go_to_start_register_raffle(message: Message, state: FSMContext, sessi
 async def go_to_start_register_raffle(message: Message, state: FSMContext, session: AsyncSession):
     await state.clear()
     await session.rollback()
-    await message.answer('Регистрация отменена',
+    answer = await get_answer_table(session=session)
+    await message.answer(f'{answer.a_cancel_registration}',
                          reply_markup=get_reply_keyboard(
                              'Начать!',
                              'Не сейчас!',
@@ -60,11 +61,10 @@ async def go_to_start_register_raffle(message: Message, state: FSMContext, sessi
                          ))
 
 
-
 @user_private_router.message(F.text.casefold() == 'начать!')
 async def first_step_before_register(message: Message, state: FSMContext, session: AsyncSession):
     questions = await get_question_table(session=session)
-    await message.answer(f"{questions.q_first}\n{questions.q_second_raffle_condition_url}",
+    await message.answer(f"{questions.q_second}\n{questions.q_second_raffle_condition_url}",
                          link_preview_options=LinkPreviewOptions(is_disabled=True),
                          reply_markup=get_reply_keyboard(
                              'Да',
@@ -75,19 +75,20 @@ async def first_step_before_register(message: Message, state: FSMContext, sessio
     await state.set_state(QuestionBeforeRegister.second_Q)
 
 
-@user_private_router.message(QuestionBeforeRegister.first_Q, F.text.casefold() == 'не сейчас!')
+@user_private_router.message(F.text.casefold().in_(["не сейчас", "нет"]))
 async def first_step_before_register_not_now(message: Message, state: FSMContext, session: AsyncSession):
     await state.clear()
     await session.rollback()
-    await message.answer('Будем ждать в следующий раз!',
+    answer = await get_answer_table(session=session)
+    await message.answer(f"{answer.a_if_user_say_no_now}",
                          reply_markup=ReplyKeyboardRemove())
 
 
 #----Первый вопрос
 @user_private_router.message(QuestionBeforeRegister.first_Q)
-async def first_step_before_register_incorrect(message: Message, state: FSMContext):
-    await message.answer('Я вас не понял(\n'
-                         'Выберите \'Готов\' или \'Не сейчас!\'',
+async def first_step_before_register_incorrect(message: Message, state: FSMContext, session: AsyncSession):
+    answer = await get_answer_table(session=session)
+    await message.answer(f'{answer.a_if_bot_dont_understand}',
                          reply_markup=get_reply_keyboard(
                              'Начать!',
                              'Не сейчас!',
@@ -114,16 +115,17 @@ async def second_step_before_register(message: Message, state: FSMContext, sessi
 async def second_step_before_register_not_now(message: Message, state: FSMContext, session: AsyncSession):
     await state.clear()
     await session.rollback()
-    await message.answer('Будем ждать в следующий раз!',
+    answer = await get_answer_table(session=session)
+    await message.answer(f'{answer.a_if_user_say_no_now}',
                          reply_markup=  get_reply_keyboard(
                              '/start',
                              size=(1, 1,)
                          ))
 
 @user_private_router.message(QuestionBeforeRegister.second_Q)
-async def second_step_before_register_incorrect(message: Message):
-    await message.answer('Я вас не понял(\n'
-                         'Выберите \'Да\' или \'Нет\'',
+async def second_step_before_register_incorrect(message: Message, session: AsyncSession):
+    answer = await get_answer_table(session=session)
+    await message.answer(f'{answer.a_if_bot_dont_understand}',
                          reply_markup=get_reply_keyboard(
                              'Да',
                              'Нет',
@@ -141,6 +143,7 @@ async def first_step_register(message: Message, state: FSMContext, session: Asyn
                              size=(1,)))
     await state.set_state(RegistrationUser.name)
 
+
 @user_private_router.message(RegistrationUser.name, F.text)
 async def second_step_register_number(message: Message, state: FSMContext, session: AsyncSession):
     if check_phone_number(message):
@@ -154,8 +157,8 @@ async def second_step_register_number(message: Message, state: FSMContext, sessi
                              ))
 
     else:
-        await message.answer('Некорректный номер телефона\n'
-                             'Введите номер телефона еще раз.')
+        answer = await get_answer_table(session=session)
+        await message.answer(f'{answer.a_incorrect_phone_number}')
 
 
 #Переход ко 2ой FSM
@@ -202,9 +205,10 @@ async def sevens_step_register(message: Message, state: FSMContext, session: Asy
     alphanumeric = string.ascii_letters + string.digits
     random_value = ''.join(random.choice(alphanumeric) for _ in range(8))
 
+    answer = await get_answer_table(session=session)
     current_raffle = await get_current_raffle(session=session)
     if not current_raffle:
-        await message.answer('Текущий розыгрыш не найден. Попробуйте позже.')
+        await message.answer(f'{answer.a_no_found_raffle}')
         await state.clear()
         return
 
@@ -227,15 +231,19 @@ async def sevens_step_register(message: Message, state: FSMContext, session: Asy
         await session.refresh(new_user)
         current_raffle.participants.append(new_user)
         await session.commit()
-        await message.answer('Вы успешно зарегестрировались в розыгрыше!\n'
-                             f'Ваш код участника - {random_value}\n\n'
-                             f'Спасибо что приняли участие, <b>{message.from_user.full_name}</b>',
+        await message.answer(f'{answer.a_end_registration_message}\n'
+                             f'- {data.get('name')}'
+                             f' {data.get('last_name')}'
+                             f' {data.get('surname')}\n'
+                             f'- {data.get('contact')}\n'
+                             f'- {data.get('check_number')}\n'
+                             f'- Код участника - {random_value}',
                              parse_mode=ParseMode.HTML)
         await state.clear()
 
     except Exception as e:
         await session.rollback()
-        await message.answer('Произошла ошибка. Пройдите регистрацию заново',
+        await message.answer(f'{answer.a_error_raffle}',
                              reply_markup=get_reply_keyboard(
                                  '/start',
                                  size=(1,)

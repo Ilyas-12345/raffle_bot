@@ -103,5 +103,11 @@ class ARegistration(Base):
     a_end_registration_message: Mapped[str] = mapped_column(nullable=False)
     a_message_for_winners: Mapped[str] = mapped_column(nullable=False)
     a_message_for_all_users: Mapped[str] = mapped_column(nullable=False)
+    a_cancel_registration: Mapped[str] = mapped_column(nullable=False)
+    a_if_user_say_no_now: Mapped[str] = mapped_column(nullable=False)
+    a_if_bot_dont_understand: Mapped[str] = mapped_column(nullable=False)
+    a_incorrect_phone_number: Mapped[str] = mapped_column(nullable=False)
+    a_no_found_raffle: Mapped[str] = mapped_column(nullable=False)
+    a_error_raffle: Mapped[str] = mapped_column(nullable=False)
 
 

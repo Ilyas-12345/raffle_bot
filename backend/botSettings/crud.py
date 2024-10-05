@@ -6,8 +6,11 @@ from fastapi import HTTPException
 from sqlalchemy import select, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.testing import AssertsExecutionResults
 
-from tg_bot.db.models import Participant, TimeActivityBot, participant_time_activity_bot, winner, QStepRegistration
+from backend.botSettings.schemas import Question
+from tg_bot.db.models import Participant, TimeActivityBot, participant_time_activity_bot, winner, QStepRegistration, \
+    ARegistration
 from backend.botSettings import schemas
 
 
@@ -109,7 +112,7 @@ async def participant_and_raffles(phone_number: str, session: AsyncSession):
     if not raffle:
         raise HTTPException(status_code=404, detail=f'Не найдено ни одной лотереи для пользователя с номером телефона {phone_number}')
 
-    return raffle
+    return users
 
 
 async def get_raffle_participant(raffle_id: int, session: AsyncSession):
@@ -260,3 +263,76 @@ async def get_question_table(session: AsyncSession):
     result = await session.execute(query)
     return result.scalars().first()
 
+
+async def create_answer_table(datas_answer: schemas.Answer, session: AsyncSession):
+    query = ARegistration(**datas_answer.dict())
+    session.add(query)
+    await session.commit()
+    await session.refresh(query)
+    return query
+
+
+async def update_a_end_registration_message(answer: str, session: AsyncSession):
+    query = update(QStepRegistration).values(a_end_registration_message=answer)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_a_message_for_winners(answer: str, session: AsyncSession):
+    query = update(QStepRegistration).values(a_message_for_winners=answer)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_a_message_for_all_users(answer: str, session: AsyncSession):
+    query = update(QStepRegistration).values(a_message_for_all_users=answer)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_a_cancel_registration(answer: str, session: AsyncSession):
+    query = update(QStepRegistration).values(a_cancel_registration=answer)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_a_if_user_say_no_now(answer: str, session: AsyncSession):
+    query = update(QStepRegistration).values(a_if_user_say_no_now=answer)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_a_if_bot_dont_understand(answer: str, session: AsyncSession):
+    query = update(QStepRegistration).values(a_if_bot_dont_understand=answer)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_a_incorrect_phone_number(answer: str, session: AsyncSession):
+    query = update(QStepRegistration).values(a_incorrect_phone_number=answer)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_a_no_found_raffle(answer: str, session: AsyncSession):
+    query = update(QStepRegistration).values(a_no_found_raffle=answer)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_a_error_raffle(answer: str, session: AsyncSession):
+    query = update(QStepRegistration).values(a_error_raffle=answer)
+    await session.execute(query)
+    await session.commit()
+
+
+async def update_all_answer(datas_answers: schemas.Answer, session: AsyncSession):
+    query = update(ARegistration).values(**datas_answers.dict())
+    await session.execute(query)
+    await session.commit()
+
+
+async def get_answer_table(session: AsyncSession):
+    query = select(ARegistration)
+    result = await session.execute(query)
+    return result.scalars().first()

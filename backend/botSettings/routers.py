@@ -14,7 +14,10 @@ from backend.botSettings.crud import set_bot_dates, \
     update_amount_winner, create_questions_table, update_all_question, update_q_first, update_q_second, \
     update_q_second_raffle_condition_url, update_q_third, update_q_third_url_privacy, update_q_fourth_introduce, \
     update_q_fourth_phone_number, update_q_fives_name, update_q_sixth_lastname, update_q_seventh_middle_name, \
-    update_q_eighth_sales_receipt
+    update_q_eighth_sales_receipt, create_answer_table, update_a_end_registration_message, update_a_message_for_winners, \
+    update_a_message_for_all_users, update_a_cancel_registration, update_a_if_user_say_no_now, \
+    update_a_if_bot_dont_understand, update_a_incorrect_phone_number, update_a_no_found_raffle, update_a_error_raffle, \
+    update_all_answer, get_answer_table
 from tg_bot.db.engine import get_async_session
 
 router_admin = APIRouter()
@@ -121,7 +124,7 @@ async def update_amount_winner_raffle(raffle_id: int, amount: int, session: Asyn
 
 
 @router_all_user.post('/create_question')
-async def creat_question(questions_data: schemas.Question, session: AsyncSession = Depends(get_async_session)):
+async def create_question(questions_data: schemas.Question, session: AsyncSession = Depends(get_async_session)):
     questions = await create_questions_table(question=questions_data, session=session)
     return questions
 
@@ -198,3 +201,74 @@ async def update_q8_sales_receipt(question: str, session: AsyncSession = Depends
     return question
 
 
+@router_all_user.post('/create_answer')
+async def create_answer(datas: schemas.Answer ,session: AsyncSession = Depends(get_async_session)):
+    questions = await create_answer_table(datas_answer=datas, session=session)
+    return questions
+
+
+@router_all_user.patch('/update_a_end_registration_message')
+async def update_registration_message(answer: str, session: AsyncSession = Depends(get_async_session)):
+    question = await update_a_end_registration_message(answer=answer, session=session)
+    return question
+
+
+@router_all_user.patch('/update_a_message_for_winners')
+async def update_message_for_winners(answer: str, session: AsyncSession = Depends(get_async_session)):
+    question = await update_a_message_for_winners(answer=answer, session=session)
+    return question
+
+
+@router_all_user.patch('/update_a_message_for_all_users')
+async def update_message_for_all_users(answer: str, session: AsyncSession = Depends(get_async_session)):
+    question = await update_a_message_for_all_users(answer=answer, session=session)
+    return question
+
+
+@router_all_user.patch('/update_a_cancel_registration')
+async def update_cancel_registration(answer: str, session: AsyncSession = Depends(get_async_session)):
+    question = await update_a_cancel_registration(answer=answer, session=session)
+    return question
+
+
+@router_all_user.patch('/update_a_if_user_say_no_now')
+async def update_if_user_say_no_now(answer: str, session: AsyncSession = Depends(get_async_session)):
+    question = await update_a_if_user_say_no_now(answer=answer, session=session)
+    return question
+
+
+@router_all_user.patch('/update_a_if_bot_dont_understand')
+async def update_if_bot_dont_understand(answer: str, session: AsyncSession = Depends(get_async_session)):
+    question = await update_a_if_bot_dont_understand(answer=answer, session=session)
+    return question
+
+
+
+@router_all_user.patch('/update_a_incorrect_phone_number')
+async def update_incorrect_phone_number(answer: str, session: AsyncSession = Depends(get_async_session)):
+    question = await update_a_incorrect_phone_number(answer=answer, session=session)
+    return question
+
+
+@router_all_user.patch('/update_a_no_found_raffle')
+async def update_no_found_raffle(answer: str, session: AsyncSession = Depends(get_async_session)):
+    question = await update_a_no_found_raffle(answer=answer, session=session)
+    return question
+
+
+@router_all_user.patch('/update_a_error_raffle')
+async def update_error_raffle(answer: str, session: AsyncSession = Depends(get_async_session)):
+    question = await update_a_error_raffle(answer=answer, session=session)
+    return question
+
+
+@router_all_user.put('/update_all_answer')
+async def update_all_answers(datas: schemas.Answer, session: AsyncSession = Depends(get_async_session)):
+    question = await update_all_answer(datas_answers=datas, session=session)
+    return question
+
+
+@router_all_user.get('/get_table_answers')
+async def get_table_answers(session: AsyncSession = Depends(get_async_session)):
+    question = await get_answer_table(session=session)
+    return question

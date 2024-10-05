@@ -6,7 +6,7 @@ from aiogram import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.botSettings.crud import get_last_active_raffle, get_current_raffle, get_raffle_participant, \
-    get_winners_table
+    get_winners_table, get_answer_table
 from tg_bot.db.models import winner, TimeActivityBot
 
 
@@ -26,9 +26,10 @@ async def determine_winners(raffle: TimeActivityBot, session: AsyncSession):
     await session.commit()
 
 
-async def notify_winners(bot, winners):
+async def notify_winners(bot, winners, session: AsyncSession):
+    answer = await get_answer_table(session=session)
     for Win in winners:
-        message = f"Поздравляем, {Win.username}! Вы выиграли в розыгрыше!"
+        message = f"{answer.a_message_for_winners}!"
         await bot.send_message(Win.tg_id, message)
 
 
@@ -38,9 +39,10 @@ async def monitor_raffles(bot: Bot, session: AsyncSession):
 
         if raffles is not None:
             if raffles.status != 'completed':
+                answer = await get_answer_table(session=session)
                 await determine_winners(session=session, raffle=raffles)
                 winners = await get_winners_table(raffle_id=raffles.id, session=session)
-                await notify_winners(bot, winners)
+                await notify_winners(bot, winners, session=session)
 
                 raffles.status = 'completed'
                 session.add(raffles)
@@ -48,7 +50,7 @@ async def monitor_raffles(bot: Bot, session: AsyncSession):
                 for user in raffles.participants:
                     winners_text = "\n".join([f"- {user.username}" for user in winners])
                     await bot.send_message(chat_id=user.tg_id,
-                                           text=f"Победители розыгрыша:\n "
+                                           text=f"{answer.a_message_for_all_users}\n "
                                                 f"{winners_text}")
 
         await session.commit()

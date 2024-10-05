@@ -48,11 +48,11 @@ class Question(BaseModel):
 class Answer(BaseModel):
 
     a_end_registration_message: str
-    a_phone_number_user: str
-    a_name_user: str
-    a_last_name_user: str
-    a_middle_name_user: str
-    a_random_key_user: str
-    a_participant_code: str
     a_message_for_winners: str
     a_message_for_all_users:  str
+    a_cancel_registration: str
+    a_if_user_say_no_now: str
+    a_if_bot_dont_understand: str
+    a_incorrect_phone_number: str
+    a_no_found_raffle: str
+    a_error_raffle: str
