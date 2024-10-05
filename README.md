@@ -30,7 +30,7 @@ pip install -r requirements.txt
 3. Download the latest revision of alembic
 
 ```bash
-alembic upgrade e22136de7e70
+alembic upgrade head
 ```
 
 4. Start the program execution and test!
