@@ -71,13 +71,13 @@ async def start_bot():
 
 
 async def start_api():
-    config = uvicorn.Config(app, host="localhost", port=8000, log_level="info")
+    config = uvicorn.Config(app, host='localhost', port=8000, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
 
 
 async def main():
-    await asyncio.gather(start_bot(), start_api(), monitor_raffle())
+    await asyncio.gather(start_bot(), monitor_raffle()) #добавить start_api() если не через докер запускать
 
 if __name__ == "__main__":
     asyncio.run(main())

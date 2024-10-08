@@ -21,3 +21,14 @@ services:
     depends_on:
       - db
     command: ['/backend_app/docker/app.sh']
+
+  bot:
+    build:
+      context: .
+    env_file:
+      - .env-non-dev
+    container_name: bot_app
+    depends_on:
+      - db
+      - app
+    command: ['/backend_app/docker/bot.sh']
